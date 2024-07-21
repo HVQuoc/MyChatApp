@@ -61,4 +61,18 @@ const authUser = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { registerUser, authUser }
+const allUsers = asyncHandler(async (req, res) => {
+    const searchKeyword = req.query.search 
+    const mongoQuery = searchKeyword ?
+    {
+        $or: [
+            {name: {$regex: searchKeyword, $options: "i"}},
+            {email: {$regex: searchKeyword, $options: "i"}}
+        ]
+    }: {};
+
+    const users = await User.find(mongoQuery).find({_id: {$ne: req.user._id}})
+    res.send(users)
+});
+
+module.exports = { registerUser, authUser, allUsers }
