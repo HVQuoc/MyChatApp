@@ -6,3 +6,7 @@
     background-color: rgb(141, 45, 117);
     background-size: cover;
 }
+
+::-webkit-scrollbar {
+    width: 0px;
+}
