@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const userRoutes = require("./routes/user.r")
 const chatRoutes = require("./routes/chat.r")
+const messageRoutes = require("./routes/message.r")
 const connectDB = require('./config/db')
 const colors = require('colors')
 const {notFound, errorHandler} = require("./middleware/errorMid")
@@ -18,6 +19,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/user", userRoutes)
 app.use("/api/chat", chatRoutes)
+app.use("/api/message", messageRoutes)
 
 app.use(notFound)
 app.use(errorHandler)
