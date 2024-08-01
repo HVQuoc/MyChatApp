@@ -16,35 +16,40 @@ const Message = ({ fetchAgain }) => {
   const { chatUser, selectedChat, setSelectedChat, chats, setChats } = ChatState()
   const toast = useToast()
 
-  // console.log("Message renders, selected chat:", selectedChat);
-  useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${chatUser.token}`
-          }
+  const fetchChats = async () => {
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${chatUser.token}`
         }
-
-        const { data } = await axios.get("/api/chat", config)
-        setChats(data)
-
-        console.log("fetched chats", data);
-      } catch (err) {
-        toast({
-          title: "Loading chats failed.",
-          status: "error",
-          description: err?.message,
-          duration: 5000,
-          isClosable: true,
-          position: "top-right"
-        })
       }
-    }
 
+      const { data } = await axios.get("/api/chat", config)
+      setChats(data)
+
+      console.log("fetched chats", data);
+    } catch (err) {
+      toast({
+        title: "Loading chats failed.",
+        status: "error",
+        description: err?.message,
+        duration: 5000,
+        isClosable: true,
+        position: "top-right"
+      })
+    }
+  }
+
+  console.log("Message renders, selected chat:", selectedChat);
+  useEffect(() => {
     setLoggedUser(chatUser)
     fetchChats()
   }, [])
+
+  useEffect(() => {
+    setLoggedUser(JSON.parse(localStorage.getItem("userInfo")));
+    fetchChats();
+  }, [fetchAgain]);
 
   return (
     <Box
@@ -99,8 +104,8 @@ const Message = ({ fetchAgain }) => {
                 key={chat._id}
                 onClick={() => setSelectedChat(chat)}
                 cursor="pointer"
-                bg={selectedChat === chat ? "#FFC0CB" : "#E8E8E8"}
-                color={selectedChat === chat ? "white" : "black"}
+                bg={selectedChat?._id === chat._id ? "#FFC0CB" : "#E8E8E8"}
+                color={selectedChat?._id === chat._id ? "white" : "black"}
                 px={2}
                 py={2}
                 borderRadius="lg"
