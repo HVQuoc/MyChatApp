@@ -40,7 +40,7 @@ const Message = ({ fetchAgain }) => {
     }
   }
 
-  console.log("Message renders, selected chat:", selectedChat);
+  //console.log("Message renders, selected chat:", selectedChat);
   useEffect(() => {
     setLoggedUser(chatUser)
     fetchChats()
