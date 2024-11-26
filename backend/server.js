@@ -5,7 +5,7 @@ const chatRoutes = require("./routes/chat.r")
 const messageRoutes = require("./routes/message.r")
 const connectDB = require('./config/db')
 const colors = require('colors')
-const {notFound, errorHandler} = require("./middleware/errorMid")
+const { notFound, errorHandler } = require("./middleware/errorMid")
 
 const app = express()
 connectDB()
@@ -34,4 +34,30 @@ const io = require('socket.io')(server, {
 
 io.on("connection", (socket) => {
     console.log("connected to socket.io")
+    socket.on('setup', (userData) => {
+        socket.join(userData._id)
+        socket.emit("connected")
+
+        console.log("userData", userData._id)
+    })
+
+    socket.on("join chat", (room) => {
+        socket.join(room)
+        console.log("user joined room", room)
+    })
+
+    socket.on("new message", (newMessageReceived) => {
+        var chat = newMessageReceived.chat
+        if (!chat.users) return console.log("No users found in this chat")
+
+
+        chat.users.forEach(user => {
+            if (user._id == newMessageReceived.sender._id)
+                return
+            socket.in(user._id).emit("message received", newMessageReceived)
+        })
+    })
+
+    socket.on("typing", (room) => socket.broadcast.to(room).emit("typing"));
+    socket.on("stop typing", (room) => socket.broadcast.to(room).emit("stop typing"));
 })

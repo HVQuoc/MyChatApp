@@ -1,37 +1,46 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { ChatState } from '../Context/chatProvider'
-import { Box, IconButton, Text, Button, Spinner, FormControl, Textarea, useToast, Input } from '@chakra-ui/react'
+import { Box, IconButton, Text, Button, Spinner, FormControl, Textarea, useToast, Input, isStyleProp } from '@chakra-ui/react'
 import { ArrowBackIcon } from '@chakra-ui/icons'
 import { getSenderName, getSender } from './config/chatLogics'
 import ProfileModal from './miscellaneous/ProfileModal'
 import UpdateGroupChatModal from './miscellaneous/UpdateGroupChatModal'
 import ScrollableChat from './ScrollableChat'
+import TypingIndicator from './TypingIndicator/TypingIndicator'
+import io from 'socket.io-client'
+
+const ENDPOINT = "http://localhost:5000"
+var socket, selectedChatCompare;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [messages, setMessages] = useState([])
     const [isLoading, setIsLoading] = useState(false)
     const [inputMessage, setInputMessage] = useState("")
     const { chatUser, selectedChat, setSelectedChat } = ChatState()
+    const [socketConnected, setSocketConnected] = useState(false)
+    const [typing, setTyping] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const toast = useToast()
 
     const fetchMessages = async () => {
         if (!selectedChat) return
         try {
             setIsLoading(true)
-                const config = {
-                    headers: {
-                        Authorization: `Bearer ${chatUser.token}`
-                    }
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${chatUser.token}`
                 }
+            }
 
-                const { data } = await axios.get(
-                    `/api/message/${selectedChat._id}`,
-                    config
-                )
+            const { data } = await axios.get(
+                `/api/message/${selectedChat._id}`,
+                config
+            )
 
-                setMessages(data)
-                setIsLoading(false)
+            setMessages(data)
+            setIsLoading(false)
+            socket.emit("join chat", selectedChat._id)
         } catch (err) {
             toast({
                 title: "Fail to load the messages.",
@@ -66,9 +75,9 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     config
                 )
 
-                
+                socket.emit("new message", data);
                 console.log("Single Chat", data);
-                setMessages(prev => [...prev, data])
+                setMessages(prev => [...prev, data]);
 
             } catch (err) {
                 toast({
@@ -85,11 +94,51 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
     const typingHandler = (e) => {
         setInputMessage(e.target.value)
+
+        if (!socketConnected) return;
+
+        if (!typing) {
+            setTyping(true);
+            socket.emit("typing", selectedChat._id);
+        }
+        let lastTypingTime = new Date().getTime();
+        var timerLength = 5000;
+        setTimeout(() => {
+            var timeNow = new Date().getTime();
+            var timeDiff = timeNow - lastTypingTime;
+            if (timeDiff >= timerLength && typing) {
+                socket.emit("stop typing", selectedChat._id);
+                setTyping(false);
+            }
+        }, timerLength);
     }
 
     useEffect(() => {
         fetchMessages()
+        selectedChatCompare = selectedChat;
     }, [selectedChat])
+
+    useEffect(() => {
+        socket = io(ENDPOINT)
+        socket.emit("setup", chatUser)
+
+        socket.on("connected", () => setSocketConnected(true))
+        socket.on("typing", () => setIsTyping(true));
+        socket.on("stop typing", () => setIsTyping(false));
+    }, [])
+
+    useEffect(() => {
+        socket.on("message received", (newMessageRecieved) => {
+            if (
+                !selectedChatCompare || // if chat is not selected or doesn't match current chat
+                selectedChatCompare._id !== newMessageRecieved.chat._id
+            ) {
+                // give the notification
+            } else {
+                setMessages([...messages, newMessageRecieved]);
+            }
+        });
+    });
 
     return (
         <>
@@ -159,7 +208,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                                 <ScrollableChat messages={messages} />
                             </div>
                         )}
-
+                        {isTyping && (
+                            <div >
+                                <TypingIndicator typing={isTyping} />
+                            </div>
+                        )}
                         <FormControl
                             onKeyDown={sendMessage}
                             isRequired
